@@ -97,21 +97,46 @@ export async function listUsers(sort="iat",limit=25,page=1) {
 // === User Registration ===
 // =========================
 
-// ======================
-// === Util Functions ===
-// ======================
+// ================================
+// === User Flags + Permissions ===
+// ================================
+
+export class flags {
+    totalBits = 4
+    
+    banned   =    0b1
+    verified =   0b10 
+    private  =  0b100 
+    kinky    = 0b1000
+}
+
+export class permissions {
+    totalBits = 2
+
+    requests =  0b1
+    asks     = 0b10 
+}
+
 
 export function isVerified(userData){
-    return userData.verified==1
+    return Boolean(userData.flags&flags.verified)
 }
 
 export function isBanned(userData){
-    return userData.banned==1
+    return Boolean(userData.flags&flags.banned)
 }
 
 export function isPrivate(userData){
-    return userData.private==1
+    return Boolean(userData.flags&flags.private)
 }
+
+export function isKinky(userData){
+    return Boolean(userData.flags&flags.kinky)
+}
+
+// ======================
+// === Util Functions ===
+// ======================
 
 export function getUserAvatarURL(userData){
     var extension = "png" // default extention
