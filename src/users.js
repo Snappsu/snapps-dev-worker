@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import * as  messanger from "./messenger" ;
+import * as  database from "./database" ;
 
 // =========================
 // === Look Up Functions ===
@@ -11,20 +12,16 @@ export async function getUserByDiscordUsername(discordUsername) {
     var payload = {status:null,data:null}
 
     // run query
-    const result = await env.SNAPPS_DEV_DB.prepare(
-        `select * from users where discord_username="${discordUsername}"`,
-    ).run();
-    console.log(JSON.stringify(result))
-
+    const result = await database.runQuery("SNAPPS_DEV_DB",`select * from users where discord_username="${discordUsername}"`)
+    
     // if query success
-    if (result.success){
+    if (result.status == "ok"){
         // add requests to payload
         payload.status = "ok"
-        payload.data = result.results
+        payload.data = result.data
     } else {
         // get error data
     }
-
     // return payload
     return payload
 } 
@@ -35,16 +32,13 @@ export async function getUserByDiscordID(discordID) {
     var payload = {status:null,data:null}
 
     // run query
-    const result = await env.SNAPPS_DEV_DB.prepare(
-        `select * from users where discord_id="${discordID}"`,
-    ).run();
-    console.log(JSON.stringify(result))
+    const result = await database.runQuery("SNAPPS_DEV_DB",`select * from users where discord_id="${discordID}"`)
 
     // if query success
-    if (result.success){
+    if (result.status == "ok"){
         // add requests to payload
         payload.status = "ok"
-        payload.data = result.results
+        payload.data = result.data
     } else {
         // get error data
     }
@@ -59,16 +53,13 @@ export async function getUserByUUID(uuid) {
     var payload = {status:null,data:null}
 
     // run query
-    const result = await env.SNAPPS_DEV_DB.prepare(
-        `select * from users where uuid="${uuid}"`,
-    ).run();
-    console.log(JSON.stringify(result))
-
+    const result = await database.runQuery("SNAPPS_DEV_DB",`select * from users where uuid="${uuid}"`)
+    
     // if query success
-    if (result.success){
+    if (result.status == "ok"){
         // add requests to payload
         payload.status = "ok"
-        payload.data = result.results
+        payload.data = result.data
     } else {
         // get error data
     }
@@ -87,14 +78,13 @@ export async function listUsers(sort="iat",limit=25,page=1) {
     var query = ` SELECT * FROM users WHERE PRIVATE = 0 ORDER BY ${sort} LIMIT ${limit} OFFSET ${((page-1)*limit)}`
 
     // run query
-    const result = await env.SNAPPS_DEV_DB.prepare(query,).run();
-    console.log(JSON.stringify(result))
-
+    const result = await database.runQuery("SNAPPS_DEV_DB",query)
+    
     // if query success
-    if (result.success){
+    if (result.status == "ok"){
         // add requests to payload
         payload.status = "ok"
-        payload.data = result.results
+        payload.data = result.data
     } else {
         // get error data
     }
