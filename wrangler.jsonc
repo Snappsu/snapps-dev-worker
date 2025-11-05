@@ -9,7 +9,14 @@
 	"compatibility_date": "2025-11-05",
 	"observability": {
 		"enabled": true
-	}
+	},
+	"d1_databases": [{
+		"binding": "SNAPPS_DEV_DB",
+		"database_name": "snapps.dev",
+		"database_id": "856f0909-e28d-40ed-ab2a-dcfa676c2afd",
+		"remote": true
+
+	}],
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -40,4 +47,5 @@
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
 	 */
 	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
+
 }
