@@ -1,6 +1,10 @@
 import { env } from "cloudflare:workers";
 import * as  messanger from "./messenger" ;
 
+// =========================
+// === Look Up Functions ===
+// =========================
+
 // get user by discord_username
 export async function getUserByDiscordUsername(discordUsername) {
     // default payload
@@ -98,3 +102,29 @@ export async function listUsers(sort="iat",limit=25,page=1) {
     // return payload
     return payload
 } 
+
+// =========================
+// === User Registration ===
+// =========================
+
+// ======================
+// === Util Functions ===
+// ======================
+
+export function isVerified(userData){
+    return userData.verified==1
+}
+
+export function isBanned(userData){
+    return userData.banned==1
+}
+
+export function isPrivate(userData){
+    return userData.private==1
+}
+
+export function getUserAvatarURL(userData){
+    var extension = "png" // default extention
+    if (userData.icon.substring(0,2) == "a_") extension = "gif"
+    return `https://cdn.discordapp.com/avatars/${userData.discord_id}/${userData.icon}.${extension}`
+}
