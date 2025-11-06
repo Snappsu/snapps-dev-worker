@@ -183,12 +183,69 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
 // === user modification ===
 // =========================
 
-// set private
+// add flags
+export async function addFlags(discordID,flagBits){
+    // default payload
+    var payload = {status:null,data:null}
+    
+    // get user flags 
+    const getFlagQuery = `select "flags" from users where "discord_id"="${discordID}"`
+    var response = await database.runQuery("SNAPPS_DEV_DB",getFlagQuery)
+    var currentFlags = response.data[0].flags
 
-// set kinky
+    // OR the bits
+    const newFlags = currentFlags|flagBits
 
-// verify user
-export async function verifyUser(userID){}
+    // set user flags
+    const setFlagQuery = `UPDATE "users" SET "flags" = '${newFlags} 'WHERE "discord_id" = '${discordID}' RETURNING rowid, *`
+    var response = await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=newFlags
+    return payload
+}
+
+// revoke flags
+export async function removeFlags(discordID,flagBits){
+    // default payload
+    var payload = {status:null,data:null}
+    
+    // get user flags 
+    const getFlagQuery = `select "flags" from users where "discord_id"="${discordID}"`
+    var response = await database.runQuery("SNAPPS_DEV_DB",getFlagQuery)
+    var currentFlags = response.data[0].flags
+
+    // create mask
+    var mask = bitmask(flags.totalBits)^flagBits
+    // XOR the bits
+
+    const newFlags = currentFlags&mask
+
+    // set user flags
+    const setFlagQuery = `UPDATE "users" SET "flags" = '${newFlags} 'WHERE "discord_id" = '${discordID}' RETURNING rowid, *`
+    var response = await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=newFlags
+    return payload
+}
+
+// set flags
+export async function setFlags(discordID,flagBits){
+    // default payload
+    var payload = {status:null,data:null}
+
+    // set user flags
+    const setFlagQuery = `UPDATE "users" SET "flags" = '${flagBits} 'WHERE "discord_id" = '${discordID}' RETURNING rowid, *`
+    await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=flagBits
+    return payload
+}
 
 // ================================
 // === user flags + permissions ===
@@ -252,4 +309,8 @@ export function getUserAvatarURL(userData){
 
 export function mentionUserDiscord(userData){
     return `<@${userData.discord_id}>`
+}
+
+function bitmask(width) {
+    return Math.pow(2, width) - 1;
 }
