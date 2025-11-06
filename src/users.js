@@ -106,7 +106,7 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     var options = {
     method: 'POST',
     body: new URLSearchParams({
-        code: discordAuthorizationToken,
+        code: `${discordAuthorizationToken}`,
         grant_type: 'authorization_code',
         client_id: env.DISCORD_BOT_ID,
         client_secret: env.DISCORD_BOT_SECRET,
@@ -114,15 +114,24 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     })
     };
 
-    fetch('https://discord.com/api/oauth2/token', options)
-    .then(response => response.json())
-    .then(response => console.log(response))
-    .catch(err => console.error(err));
-    
-    // get users' discord info
-    var userDiscordInfo = {}
-    var discordAccessToken = ""
+    var authRequest = await fetch('https://discord.com/api/oauth2/token', options).catch(err => console.error(err));
+    var authResponse = await authRequest.json()
+    var discordAccessToken = authResponse.access_token;
 
+    // error checking
+    if (authRequest.status != 200){
+        // log error
+        var error = "something went wrong while getting access token"
+        if ("error_description" in authResponse) error += ": " + authResponse.error_description;
+        console.error(error)
+        // set up payload
+        payload.status="error"
+        payload.data=error
+        // abort 
+        return payload
+    }
+
+    // get users' discord info
     options = {
     method: 'GET',
     headers: {
@@ -130,20 +139,36 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     }
     };
 
-    fetch('https://discord.com/api/users/@me', options)
-    .then(response => response.json())
-    .then(response => console.log(response))
+    var userRequest = await fetch('https://discord.com/api/users/@me', options)
     .catch(err => console.error(err));
+    var userResponse = await userRequest.json()
 
+    // error checking
+    if (userRequest.status != 200){
+        // log error
+        var error = "something went wrong while getting discord user info"
+        if ("error_description" in userResponse) error += ": " + authResponse.error_description;
+        console.error(error)
+        // set up payload
+        payload.status="error"
+        payload.data=error
+        // abort 
+        return payload
+    }
 
     // setup user info
     const uuid = crypto.randomUUID()
     const iat = Date.now()
 
+    const discord_id = userResponse.id
+    const discord_username = userResponse.username
+    const icon = userResponse.avatar
+
     // add user to db
-    //const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, ${flags}, ${permissions}, NULL) RETURNING rowid, *`
+    const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, ${flags}, ${permissions}, NULL) RETURNING rowid, *`
 
     // verify user if in server
+    
 
     // notify me 
     await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_CHAT,{content:`new user made`});
