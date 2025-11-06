@@ -94,11 +94,13 @@ export async function listUsers(sort="iat",limit=25,page=1) {
 } 
 
 // =========================
-// === User Registration ===
+// === user registration ===
 // =========================
 
+
+
 // ================================
-// === User Flags + Permissions ===
+// === user flags + permissions ===
 // ================================
 
 class flags {
@@ -155,4 +157,8 @@ export function getUserAvatarURL(userData){
     var extension = "png" // default extention
     if (userData.icon.substring(0,2) == "a_") extension = "gif"
     return `https://cdn.discordapp.com/avatars/${userData.discord_id}/${userData.icon}.${extension}`
+}
+
+export function mentionUserDiscord(userData){
+    return `<@${userData.discord_id}>`
 }
