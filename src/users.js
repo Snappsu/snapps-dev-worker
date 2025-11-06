@@ -3,7 +3,7 @@ import * as  messanger from "./messenger" ;
 import * as  database from "./database" ;
 
 // =========================
-// === Look Up Functions ===
+// === look up functions ===
 // =========================
 
 // get user by discord_username
@@ -97,7 +97,73 @@ export async function listUsers(sort="iat",limit=25,page=1) {
 // === user registration ===
 // =========================
 
+// create user via discord
+export async function createUserViaDiscord(discordAuthorizationToken,redirect_uri){
+    // default payload
+    var payload = {status:null,data:null}
 
+    // get access token
+    var options = {
+    method: 'POST',
+    body: new URLSearchParams({
+        code: discordAuthorizationToken,
+        grant_type: 'authorization_code',
+        client_id: env.DISCORD_BOT_ID,
+        client_secret: env.DISCORD_BOT_SECRET,
+        redirect_uri: redirect_uri
+    })
+    };
+
+    fetch('https://discord.com/api/oauth2/token', options)
+    .then(response => response.json())
+    .then(response => console.log(response))
+    .catch(err => console.error(err));
+    
+    // get users' discord info
+    var userDiscordInfo = {}
+    var discordAccessToken = ""
+
+    options = {
+    method: 'GET',
+    headers: {
+        Authorization: `Bearer ${discordAccessToken}`
+    }
+    };
+
+    fetch('https://discord.com/api/users/@me', options)
+    .then(response => response.json())
+    .then(response => console.log(response))
+    .catch(err => console.error(err));
+
+
+    // setup user info
+    const uuid = crypto.randomUUID()
+    const iat = Date.now()
+
+    // add user to db
+    //const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, ${flags}, ${permissions}, NULL) RETURNING rowid, *`
+
+    // verify user if in server
+
+    // notify me 
+    await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_CHAT,{content:`new user made`});
+    
+
+    // return payload
+    return payload
+}
+
+
+// =========================
+// === user modification ===
+// =========================
+
+// set private
+
+// set kinky
+
+// verify user
+export async function verifyUser(userID){}
 
 // ================================
 // === user flags + permissions ===
