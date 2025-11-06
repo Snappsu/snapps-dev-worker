@@ -114,7 +114,7 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     })
     };
 
-    var authRequest = await fetch('https://discord.com/api/oauth2/token', options).catch(err => console.error(err));
+    var authRequest = await fetch(`${DISCORD_API_BASE_URL}/oauth2/token`, options).catch(err => console.error(err));
     var authResponse = await authRequest.json()
     var discordAccessToken = authResponse.access_token;
 
@@ -139,7 +139,7 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     }
     };
 
-    var userRequest = await fetch('https://discord.com/api/users/@me', options)
+    var userRequest = await fetch(`${DISCORD_API_BASE_URL}/users/@me`, options)
     .catch(err => console.error(err));
     var userResponse = await userRequest.json()
 
@@ -156,6 +156,8 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
         return payload
     }
 
+    // revoke token
+
     // setup user info
     const uuid = crypto.randomUUID()
     const iat = Date.now()
@@ -168,12 +170,10 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, ${flags}, ${permissions}, NULL) RETURNING rowid, *`
 
     // verify user if in server
-    
 
     // notify me 
     await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_CHAT,{content:`new user made`});
     
-
     // return payload
     return payload
 }
@@ -247,6 +247,65 @@ export async function setFlags(discordID,flagBits){
     return payload
 }
 
+
+// update user info using discord info
+export async function upateUserViaDiscord(discordID){
+
+    // default payload
+    var payload = {status:null,data:null}
+
+    console.log(`attempting to update user with discord_id ${discordID}...`)
+
+    // get members user info from server
+    var discordUserData;
+    const url = `${env.DISCORD_API_BASE_URL}/guilds/${env.DISCORD_TEST_SERVER_ID}/members/${discordID}`; //PREPROD
+
+    var options = {
+        method: 'GET',
+        headers: {
+            Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`
+        }
+    };
+
+    const response = await fetch(url, options);
+    try { 
+        discordUserData = await response.json();
+        console.log(discordUserData);
+    } catch (error) {
+        console.error(error);
+        payload.status="error"
+        payload.data=error
+        return payload
+    }
+
+    // set up vars
+    var username = discordUserData.user.username
+    var nickname = null
+    var icon = discordUserData.user.avatar
+    
+    // if user in server
+    if (response.status==200){
+         console.log(`user is in server...`)
+        if(discordUserData.nick) var nickname = discordUserData.nick
+        if(discordUserData.avatar) var icon = discordUserData.avatar
+    }
+
+    // if user is verified
+    if (discordUserData.roles.includes(env.DISCORD_TEST_VERIFIED_ROLE_ID)){
+        console.log(`user is verified...`)
+        addFlags(flags.verified)
+    }
+
+    // run update query
+    const query =`UPDATE "main"."users" SET "discord_username" = '${username}', "nickname" = ${nickname?`'${nickname}'`:"NULL"}, "icon" = ${icon?`'${icon}'`:"NULL"} WHERE "discord_id" = '${discordID}' RETURNING rowid, *`
+    //await database.runQuery("SNAPPS_DEV_DB",query)
+    
+    // return payload
+    payload.status="ok"
+    return payload
+}
+
+
 // ================================
 // === user flags + permissions ===
 // ================================
@@ -295,7 +354,6 @@ export function canMakeRequests(userData){
 export function canMakeAsks(userData){
     return Boolean(userData.permissions&permissions.asks)
 }
-
 
 // ======================
 // === util functions ===
