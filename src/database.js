@@ -10,6 +10,8 @@ import { env } from "cloudflare:workers";
 
 export async function runQuery(database,query) {
 
+    console.log(`running query "${query}" against "${database}"...` )
+
     // default payload
     var payload = {status:null,data:null}
 
@@ -21,10 +23,12 @@ export async function runQuery(database,query) {
         // add requests to payload
         payload.status = "ok"
         payload.data = result.results
+        console.log("query successful!")
     } else {
         // get error data
         payload.status = "error"
         payload.data = "something went wrong while running query"
+        console.error("something went wrong while running query!")
     }
 
     // return payload
