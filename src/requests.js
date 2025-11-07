@@ -9,7 +9,7 @@ export async function createRequest(requestData) {
     // default payloads
     var payload = {status:null,data:null}
 
-    var user = await (await users.getUserByUUID(requestData.owner)).data[0]
+    var user = await (await users.getUserByUUID(requestData.owner)).data
     
     // check if user is banned
     if (users.isBanned(user)) {

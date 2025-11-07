@@ -175,8 +175,8 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     const icon = userResponse.avatar
 
     // add user to db
-    const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, 0, 0, NULL) RETURNING rowid, *`
-    userData =  (await database.runQuery("SNAPPS_DEV_DB",query)).data[0]
+    const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, 0, 0, NULL) RETURNING *`
+    userData =  (await database.runQuery("SNAPPS_DEV_DB",query)).data
     console.log(userData)
 
     // verify user if in server
@@ -248,7 +248,7 @@ export async function upateUserViaDiscordServer(userData){
 
     // run update query
     const query =`UPDATE "main"."users" SET "discord_username" = '${username}', "nickname" = ${nickname?`'${nickname}'`:"NULL"}, "icon" = ${icon?`'${icon}'`:"NULL"} WHERE "uuid" = '${userData.uuid}' RETURNING *`
-    userData = (await database.runQuery("SNAPPS_DEV_DB",query)).data[0]
+    userData = (await database.runQuery("SNAPPS_DEV_DB",query)).data
     
     // return payload
     payload.status="ok"
@@ -308,12 +308,12 @@ export async function addFlags(userData,flagBits){
     const newFlags = currentFlags|flagBits
 
     // set user flags
-    const setFlagQuery = `UPDATE "users" SET "flags" = '${newFlags} 'WHERE "uuid" = '${userData.uuid}' RETURNING rowid, *`
+    const setFlagQuery = `UPDATE "users" SET "flags" = '${newFlags} 'WHERE "uuid" = '${userData.uuid}' RETURNING *`
     var response = await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
 
     // return payload
     payload.status="ok"
-    payload.data=response.data[0]
+    payload.data=response.data
     return payload
 }
 
@@ -337,7 +337,7 @@ export async function removeFlags(userData,flagBits){
 
     // return payload
     payload.status="ok"
-    payload.data=response.data[0]
+    payload.data=response.data
     return payload
 }
 
@@ -352,7 +352,7 @@ export async function setFlags(userData,flagBits){
 
     // return payload
     payload.status="ok"
-    payload.data=response.data[0]
+    payload.data=response.data
     return payload
 }
 
@@ -379,12 +379,12 @@ export async function addPerms(userData,permBits){
     const newPerms = currentPerms|permBits
 
     // set user perms
-    const setPermQuery = `UPDATE "users" SET "permission" = '${newPerms} 'WHERE "uuid" = '${userData.uuid}' RETURNING rowid, *`
+    const setPermQuery = `UPDATE "users" SET "permission" = '${newPerms} 'WHERE "uuid" = '${userData.uuid}' RETURNING *`
     var response = await database.runQuery("SNAPPS_DEV_DB",setPermQuery)
 
     // return payload
     payload.status="ok"
-    payload.data=response.data[0]
+    payload.data=response.data
     return payload
 }
 
@@ -408,7 +408,7 @@ export async function removePerms(userData,permBits){
 
     // return payload
     payload.status="ok"
-    payload.data=response.data[0]
+    payload.data=response.data
     return payload
 }
 
@@ -423,7 +423,7 @@ export async function setPerms(userData,permBits){
 
     // return payload
     payload.status="ok"
-    payload.data=response.data[0]
+    payload.data=response.data
     return payload
 }
 
@@ -442,7 +442,7 @@ export async function grantDefaultPerms(userData){
 
     // return payload
     payload.status="ok"
-    payload.data=response.data[0]
+    payload.data=response.data
     return payload
 }
 
