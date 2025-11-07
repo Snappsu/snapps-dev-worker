@@ -114,7 +114,7 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     })
     };
 
-    var authRequest = await fetch(`${DISCORD_API_BASE_URL}/oauth2/token`, options).catch(err => console.error(err));
+    var authRequest = await fetch(`${env.DISCORD_API_BASE_URL}/oauth2/token`, options).catch(err => console.error(err));
     var authResponse = await authRequest.json()
     var discordAccessToken = authResponse.access_token;
 
@@ -139,7 +139,7 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     }
     };
 
-    var userRequest = await fetch(`${DISCORD_API_BASE_URL}/users/@me`, options)
+    var userRequest = await fetch(`${env.DISCORD_API_BASE_URL}/users/@me`, options)
     .catch(err => console.error(err));
     var userResponse = await userRequest.json()
 
@@ -158,6 +158,14 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
 
     // revoke token
 
+    // check if user is already registered
+    var userData = (await getUserByDiscordID(userResponse.id)).data
+    if (userData.length !=0) {
+        payload.status = "error"
+        payload.data = "seems like you're already registered"
+        return payload
+    }
+
     // setup user info
     const uuid = crypto.randomUUID()
     const iat = Date.now()
@@ -167,98 +175,37 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     const icon = userResponse.avatar
 
     // add user to db
-    const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, ${flags}, ${permissions}, NULL) RETURNING rowid, *`
+    const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, 0, 0, NULL) RETURNING rowid, *`
+    userData =  (await database.runQuery("SNAPPS_DEV_DB",query)).data[0]
+    console.log(userData)
 
     // verify user if in server
+    userData = (await upateUserViaDiscordServer(userData))
 
     // notify me 
-    await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_CHAT,{content:`new user made`});
+    await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_CHAT,{content:`\`\`\`json\n${JSON.stringify(userData)}\`\`\``}); //PREPROD
     
     // return payload
+    payload.status = "ok"
+    payload.data = userData
     return payload
 }
-
 
 // =========================
 // === user modification ===
 // =========================
 
-// add flags
-export async function addFlags(discordID,flagBits){
-    // default payload
-    var payload = {status:null,data:null}
-    
-    // get user flags 
-    const getFlagQuery = `select "flags" from users where "discord_id"="${discordID}"`
-    var response = await database.runQuery("SNAPPS_DEV_DB",getFlagQuery)
-    var currentFlags = response.data[0].flags
-
-    // OR the bits
-    const newFlags = currentFlags|flagBits
-
-    // set user flags
-    const setFlagQuery = `UPDATE "users" SET "flags" = '${newFlags} 'WHERE "discord_id" = '${discordID}' RETURNING rowid, *`
-    var response = await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
-
-    // return payload
-    payload.status="ok"
-    payload.data=newFlags
-    return payload
-}
-
-// revoke flags
-export async function removeFlags(discordID,flagBits){
-    // default payload
-    var payload = {status:null,data:null}
-    
-    // get user flags 
-    const getFlagQuery = `select "flags" from users where "discord_id"="${discordID}"`
-    var response = await database.runQuery("SNAPPS_DEV_DB",getFlagQuery)
-    var currentFlags = response.data[0].flags
-
-    // create mask
-    var mask = bitmask(flags.totalBits)^flagBits
-    // XOR the bits
-
-    const newFlags = currentFlags&mask
-
-    // set user flags
-    const setFlagQuery = `UPDATE "users" SET "flags" = '${newFlags} 'WHERE "discord_id" = '${discordID}' RETURNING rowid, *`
-    var response = await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
-
-    // return payload
-    payload.status="ok"
-    payload.data=newFlags
-    return payload
-}
-
-// set flags
-export async function setFlags(discordID,flagBits){
-    // default payload
-    var payload = {status:null,data:null}
-
-    // set user flags
-    const setFlagQuery = `UPDATE "users" SET "flags" = '${flagBits} 'WHERE "discord_id" = '${discordID}' RETURNING rowid, *`
-    await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
-
-    // return payload
-    payload.status="ok"
-    payload.data=flagBits
-    return payload
-}
-
-
-// update user info using discord info
-export async function upateUserViaDiscord(discordID){
+// update user info using discord server info
+export async function upateUserViaDiscordServer(userData){
 
     // default payload
     var payload = {status:null,data:null}
 
-    console.log(`attempting to update user with discord_id ${discordID}...`)
+    console.log(`attempting to update user ${userData.uuid}...`)
 
     // get members user info from server
     var discordUserData;
-    const url = `${env.DISCORD_API_BASE_URL}/guilds/${env.DISCORD_TEST_SERVER_ID}/members/${discordID}`; //PREPROD
+    const url = `${env.DISCORD_API_BASE_URL}/guilds/${env.DISCORD_TEST_SERVER_ID}/members/${userData.discord_id}`; //PREPROD
 
     var options = {
         method: 'GET',
@@ -291,17 +238,21 @@ export async function upateUserViaDiscord(discordID){
     }
 
     // if user is verified
-    if (discordUserData.roles.includes(env.DISCORD_TEST_VERIFIED_ROLE_ID)){
+    if (discordUserData.roles.includes(env.DISCORD_TEST_VERIFIED_ROLE_ID)){ //PREPROD
         console.log(`user is verified...`)
-        addFlags(flags.verified)
+        userData = addFlags(userData,flags.verified)
     }
 
+    // grant default perms 
+    userData = await users.grantDefaultPerms(user)
+
     // run update query
-    const query =`UPDATE "main"."users" SET "discord_username" = '${username}', "nickname" = ${nickname?`'${nickname}'`:"NULL"}, "icon" = ${icon?`'${icon}'`:"NULL"} WHERE "discord_id" = '${discordID}' RETURNING rowid, *`
-    //await database.runQuery("SNAPPS_DEV_DB",query)
+    const query =`UPDATE "main"."users" SET "discord_username" = '${username}', "nickname" = ${nickname?`'${nickname}'`:"NULL"}, "icon" = ${icon?`'${icon}'`:"NULL"} WHERE "uuid" = '${userData.uuid}' RETURNING *`
+    userData = (await database.runQuery("SNAPPS_DEV_DB",query)).data[0]
     
     // return payload
     payload.status="ok"
+    payload.data = userData
     return payload
 }
 
@@ -345,6 +296,67 @@ export function isKinky(userData){
     return Boolean(userData.flags&flags.kinky)
 }
 
+// add flags
+export async function addFlags(userData,flagBits){
+    // default payload
+    var payload = {status:null,data:null}
+    
+    // get user flags 
+    var currentFlags = userData.flags
+
+    // OR the bits
+    const newFlags = currentFlags|flagBits
+
+    // set user flags
+    const setFlagQuery = `UPDATE "users" SET "flags" = '${newFlags} 'WHERE "uuid" = '${userData.uuid}' RETURNING rowid, *`
+    var response = await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=response.data[0]
+    return payload
+}
+
+// revoke flags
+export async function removeFlags(userData,flagBits){
+    // default payload
+    var payload = {status:null,data:null}
+    
+    // get user flags 
+    var currentFlags = userData.flags
+
+    // create mask
+    var mask = bitmask(flags.totalBits)^flagBits
+    // XOR the bits
+
+    const newFlags = currentFlags&mask
+
+    // set user flags
+    const setFlagQuery = `UPDATE "users" SET "flags" = '${newFlags} 'WHERE "uuid" = '${userData.uuid}' RETURNING *`
+    var response = await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=response.data[0]
+    return payload
+}
+
+// set flags
+export async function setFlags(userData,flagBits){
+    // default payload
+    var payload = {status:null,data:null}
+
+    // set user flags
+    const setFlagQuery = `UPDATE "users" SET "flags" = '${flagBits} 'WHERE "uuid" = '${userData.uuid}' RETURNING *`
+    await database.runQuery("SNAPPS_DEV_DB",setFlagQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=response.data[0]
+    return payload
+}
+
+
 // permission check functions
 
 export function canMakeRequests(userData){
@@ -354,6 +366,87 @@ export function canMakeRequests(userData){
 export function canMakeAsks(userData){
     return Boolean(userData.permissions&permissions.asks)
 }
+
+// add perms
+export async function addPerms(userData,permBits){
+    // default payload
+    var payload = {status:null,data:null}
+    
+    // get user perms 
+    var currentPerms = userData.permissions
+
+    // OR the bits
+    const newPerms = currentPerms|permBits
+
+    // set user perms
+    const setPermQuery = `UPDATE "users" SET "permission" = '${newPerms} 'WHERE "uuid" = '${userData.uuid}' RETURNING rowid, *`
+    var response = await database.runQuery("SNAPPS_DEV_DB",setPermQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=response.data[0]
+    return payload
+}
+
+// revoke perms
+export async function removePerms(userData,permBits){
+    // default payload
+    var payload = {status:null,data:null}
+
+    // get user perms 
+    var currentPerms = userData.permissions
+
+    // create mask
+    var mask = bitmask(perms.totalBits)^permBits
+    // XOR the bits
+
+    const newPerms = currentPerms&mask
+
+    // set user perms
+    const setPermQuery = `UPDATE "users" SET "permissions" = '${newPerms} 'WHERE "uuid" = '${userData.uuid}' RETURNING *`
+    var response = await database.runQuery("SNAPPS_DEV_DB",setPermQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=response.data[0]
+    return payload
+}
+
+// set perms
+export async function setPerms(userData,permBits){
+    // default payload
+    var payload = {status:null,data:null}
+
+    // set user perms
+    const setPermQuery = `UPDATE "users" SET "permissions" = '${permBits} 'WHERE "uuid" = '${userData.uuid}' RETURNING *`
+    await database.runQuery("SNAPPS_DEV_DB",setPermQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=response.data[0]
+    return payload
+}
+
+// grant default perms
+export async function grantDefaultPerms(userData){
+    // default payload
+    var payload = {status:null,data:null}
+
+    // OR the bits
+    var newPerms = userData.permissions|permissions.requests
+    newPerms = newPerms|permissions.asks
+
+    // set user perms
+    const setPermQuery = `UPDATE "users" SET "permissions" = '${newPerms} 'WHERE "uuid" = '${userData.uuid}' RETURNING *`
+    var response = await database.runQuery("SNAPPS_DEV_DB",setPermQuery)
+
+    // return payload
+    payload.status="ok"
+    payload.data=response.data[0]
+    return payload
+}
+
+
 
 // ======================
 // === util functions ===
