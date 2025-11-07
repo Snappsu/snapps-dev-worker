@@ -54,7 +54,7 @@ export async function createRequest(requestData) {
     request.stats = 0
 
     // add request to Request DB
-    const query = `INSERT INTO "main"."requests" ("id", "owner", "details", "has_references", "publicity", "handles", "iat", "status", "finish_time", "finish_product") VALUES('${request.id}', '${request.owner}', '${request.details}', 0, ${request.publicity}, '${JSON.stringify(request.handles)}', ${request.iat}, ${request.stats}, ${null},  ${null}) RETURNING rowid, *`
+    const query = `INSERT INTO "main"."requests" ("id", "owner", "details", "has_references", "publicity", "handles", "iat", "status", "finish_time", "finish_product") VALUES('${request.id}', '${request.owner}', '${request.details}', 0, ${request.publicity}, '${JSON.stringify(request.handles)}', ${request.iat}, ${request.stats}, ${null},  ${null}) RETURNING *`
     // upload images to Request /reference Bucket`
     const result = await database.runQuery("SNAPPS_DEV_DB",query)
 
