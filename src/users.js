@@ -97,8 +97,8 @@ export async function listUsers(sort="iat",limit=25,page=1) {
 // === user registration ===
 // =========================
 
-// create user via discord
-export async function createUserViaDiscord(discordAuthorizationToken,redirect_uri){
+// create user via discord (external i.e. website browser)
+export async function createUserViaDiscordExternal(discordAuthorizationToken,redirect_uri){
     // default payload
     var payload = {status:null,data:null}
 
@@ -158,6 +158,45 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
 
     // check if user is already registered
     var userData = (await getUserByDiscordID(userResponse.id)).data
+    if (userData.length !=0) {
+        payload.status = "error"
+        payload.data = "seems like you're already registered"
+        return payload
+    }
+
+    // setup user info
+    const uuid = crypto.randomUUID()
+    const iat = Date.now()
+
+    const discord_id = userResponse.id
+    const discord_username = userResponse.username
+    const icon = userResponse.avatar
+
+    // add user to db
+    const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, 0, 0, NULL) RETURNING *`
+    userData =  (await database.runQuery("SNAPPS_DEV_DB",query)).data
+    console.log(userData)
+
+    // verify user if in server
+    userData = (await upateUserViaDiscordServer(userData))
+
+    // notify me 
+    await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_CHAT,{content:`\`\`\`json\n${JSON.stringify(userData)}\`\`\``}); //PREPROD
+    
+    // return payload
+    payload.status = "ok"
+    payload.data = userData
+    return payload
+}
+
+// create user via discord (internal i.e. command) 
+export async function createUserViaDiscordInternal(discordUserData){
+
+    // default payload
+    var payload = {status:null,data:null}
+
+    // check if user is already registered
+    var userData = (await getUserByDiscordID(discordUserData.id)).data
     if (userData.length !=0) {
         payload.status = "error"
         payload.data = "seems like you're already registered"
