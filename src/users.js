@@ -132,15 +132,8 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     }
 
     // get users' discord info
-    options = {
-    method: 'GET',
-    headers: {
-        Authorization: `Bearer ${discordAccessToken}`
-    }
-    };
-
-    var userRequest = await fetch(`${env.DISCORD_API_BASE_URL}/users/@me`, options)
-    .catch(err => console.error(err));
+    options = { method: 'GET', headers: {Authorization: `Bearer ${discordAccessToken}`}};
+    var userRequest = await fetch(`${env.DISCORD_API_BASE_URL}/users/@me`, options).catch(err => console.error(err));
     var userResponse = await userRequest.json()
 
     // error checking
@@ -157,6 +150,11 @@ export async function createUserViaDiscord(discordAuthorizationToken,redirect_ur
     }
 
     // revoke token
+    // get users' discord info
+    options = { method: 'POST',body: new URLSearchParams({
+        token:discordAccessToken}), headers: {Authorization: `Bearer ${discordAccessToken}`}};
+    var revokeRequest= await fetch(`${env.DISCORD_API_BASE_URL}/oauth2/token/revoke`, options).catch(err => console.error(err));
+    var revokeResponse = await revokeRequest.json()
 
     // check if user is already registered
     var userData = (await getUserByDiscordID(userResponse.id)).data
