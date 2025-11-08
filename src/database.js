@@ -23,6 +23,7 @@ export async function runQuery(database,query) {
         // add requests to payload
         payload.status = "ok"
         result.results.length==1?payload.data = result.results[0]:payload.data = result.results
+        if(result.results.length==0)payload.data = null
         console.log("query successful!")
     } else {
         // get error data

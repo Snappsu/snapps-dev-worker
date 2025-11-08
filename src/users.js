@@ -158,7 +158,7 @@ export async function createUserViaDiscordExternal(discordAuthorizationToken,red
 
     // check if user is already registered
     var userData = (await getUserByDiscordID(userResponse.id)).data
-    if (userData.length !=0) {
+    if (userData) {
         payload.status = "error"
         payload.data = "seems like you're already registered"
         return payload
@@ -197,7 +197,7 @@ export async function createUserViaDiscordInternal(discordUserData){
 
     // check if user is already registered
     var userData = (await getUserByDiscordID(discordUserData.id)).data
-    if (userData.length !=0) {
+    if (userData) {
         payload.status = "error"
         payload.data = "seems like you're already registered"
         return payload
