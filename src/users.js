@@ -216,6 +216,10 @@ export async function createUserViaDiscordInternal(discordUserData){
     userData =  (await database.runQuery("SNAPPS_DEV_DB",query)).data
     console.log(userData)
 
+    // grant default perms 
+    userData = await grantDefaultPerms(userData)
+
+
     // verify user if in server
     userData = (await upateUserViaDiscordServer(userData))
 
@@ -254,7 +258,7 @@ export async function upateUserViaDiscordServer(userData){
     const response = await fetch(url, options);
     try { 
         discordUserData = await response.json();
-        console.log(discordUserData);
+        //console.log(discordUserData);
     } catch (error) {
         console.error(error);
         payload.status="error"
@@ -270,19 +274,18 @@ export async function upateUserViaDiscordServer(userData){
     // if user in server
     if (response.status==200){
          console.log(`user is in server...`)
+
         if(discordUserData.nick) var nickname = discordUserData.nick
-        if(discordUserData.avatar) var icon = discordUserData.avatar
-    }
 
-    // if user is verified
-    if (discordUserData.roles.includes(env.DISCORD_TEST_VERIFIED_ROLE_ID)){ //PREPROD
+        // currently a bit too tedious (lazy) to user avatars and guild avatars
+        //if(discordUserData.avatar) var icon = discordUserData.avatar
+
+        // if user is verified
+        if (discordUserData.roles.includes(env.DISCORD_TEST_VERIFIED_ROLE_ID)){ //PREPROD
         console.log(`user is verified...`)
-        userData = addFlags(userData,flags.verified)
+        userData = (await addFlags(userData,flags.verified)).data
     }
-
-    // grant default perms 
-    userData = await users.grantDefaultPerms(user)
-
+    }
     // run update query
     const query =`UPDATE "main"."users" SET "discord_username" = '${username}', "nickname" = ${nickname?`'${nickname}'`:"NULL"}, "icon" = ${icon?`'${icon}'`:"NULL"} WHERE "uuid" = '${userData.uuid}' RETURNING *`
     userData = (await database.runQuery("SNAPPS_DEV_DB",query)).data
@@ -294,44 +297,7 @@ export async function upateUserViaDiscordServer(userData){
 }
 
 
-// ================================
-// === user flags + permissions ===
-// ================================
 
-class flags {
-    static totalBits = 4
-    
-    static banned   =    0b1
-    static verified =   0b10 
-    static private  =  0b100 
-    static kinky    = 0b1000
-}
-
-class permissions {
-    static totalBits = 2
-
-    static requests =  0b1
-    static asks     = 0b10 
-}
-
-// flag check functions
-
-export function isVerified(userData){
-    console.log(flags.verified)
-    return Boolean(userData.flags&flags.verified)
-}
-
-export function isBanned(userData){
-    return Boolean(userData.flags&flags.banned)
-}
-
-export function isPrivate(userData){
-    return Boolean(userData.flags&flags.private)
-}
-
-export function isKinky(userData){
-    return Boolean(userData.flags&flags.kinky)
-}
 
 // add flags
 export async function addFlags(userData,flagBits){
@@ -391,17 +357,6 @@ export async function setFlags(userData,flagBits){
     payload.status="ok"
     payload.data=response.data
     return payload
-}
-
-
-// permission check functions
-
-export function canMakeRequests(userData){
-    return Boolean(userData.permissions&permissions.requests)
-}
-
-export function canMakeAsks(userData){
-    return Boolean(userData.permissions&permissions.asks)
 }
 
 // add perms
@@ -484,10 +439,74 @@ export async function grantDefaultPerms(userData){
 }
 
 
+// ================================
+// === user flags + permissions ===
+// ================================
+
+class flags {
+    static totalBits = 4
+    
+    static banned   =    0b1
+    static verified =   0b10 
+    static private  =  0b100 
+    static kinky    = 0b1000
+}
+
+class permissions {
+    static totalBits = 2
+
+    static requests =  0b1
+    static asks     = 0b10 
+}
+
+// flag check functions
+
+export function isVerified(userData){
+    console.log(flags.verified)
+    return Boolean(userData.flags&flags.verified)
+}
+
+export function isBanned(userData){
+    return Boolean(userData.flags&flags.banned)
+}
+
+export function isPrivate(userData){
+    return Boolean(userData.flags&flags.private)
+}
+
+export function isKinky(userData){
+    return Boolean(userData.flags&flags.kinky)
+}
+
+export async function isInServer(userData){
+    const url = `${env.DISCORD_API_BASE_URL}/guilds/${env.DISCORD_TEST_SERVER_ID}/members/${userData.discord_id}`; //PREPROD
+
+    var options = {
+        method: 'GET',
+        headers: {
+            Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`
+        }
+    };
+    response = await fetch(url, options);
+    return response.status == 200;
+}
+
+// permission check functions
+
+export function canMakeRequests(userData){
+    return Boolean(userData.permissions&permissions.requests)
+}
+
+export function canMakeAsks(userData){
+    return Boolean(userData.permissions&permissions.asks)
+}
+
 
 // ======================
 // === util functions ===
 // ======================
+
+
 
 export function getUserAvatarURL(userData){
     var extension = "png" // default extention
