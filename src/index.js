@@ -14,6 +14,11 @@ import * as  messages from "./messenger";
 import * as  users from "./users";
 export default class extends WorkerEntrypoint
 {
+
+	async fetch(request, env, ctx) {
+		return new Response('Hello World!');
+	}
+
 	// ===== messenger commands =====
 
 	async sendToDiscordWebhook(webhookURL, messageObject, silent=false, embeds=false){
