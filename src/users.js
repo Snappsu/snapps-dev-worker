@@ -207,9 +207,9 @@ export async function createUserViaDiscordInternal(discordUserData){
     const uuid = crypto.randomUUID()
     const iat = Date.now()
 
-    const discord_id = userResponse.id
-    const discord_username = userResponse.username
-    const icon = userResponse.avatar
+    const discord_id = discordUserData.id
+    const discord_username = discordUserData.username
+    const icon = discordUserData.avatar
 
     // add user to db
     const query = `INSERT INTO "main"."users" ("uuid", "discord_id", "discord_username", "nickname", "email", "icon", "created_at", "flags", "permissions", "title") VALUES('${uuid}', '${discord_id}', '${discord_username}', NULL, NULL, '${icon}', ${iat}, 0, 0, NULL) RETURNING *`
@@ -295,9 +295,6 @@ export async function upateUserViaDiscordServer(userData){
     payload.data = userData
     return payload
 }
-
-
-
 
 // add flags
 export async function addFlags(userData,flagBits){
