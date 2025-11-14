@@ -181,7 +181,7 @@ export async function createUserViaDiscordExternal(discordAuthorizationToken,red
     userData = (await upateUserViaDiscordServer(userData))
 
     // notify me 
-    await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_CHAT,{content:`\`\`\`json\n${JSON.stringify(userData)}\`\`\``}); //PREPROD
+    await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_MOD_CHAT,{content:`\`\`\`json\n${JSON.stringify(userData)}\`\`\``}); //PREPROD
     
     // return payload
     payload.status = "ok"
@@ -217,14 +217,14 @@ export async function createUserViaDiscordInternal(discordUserData){
     console.log(userData)
 
     // grant default perms 
-    userData = await grantDefaultPerms(userData)
+    userData = await (await grantDefaultPerms(userData)).data
 
-
+    console.log(userData)
     // verify user if in server
-    userData = (await upateUserViaDiscordServer(userData))
+    userData = (await upateUserViaDiscordServer(userData)).data
 
     // notify me 
-    await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_CHAT,{content:`\`\`\`json\n${JSON.stringify(userData)}\`\`\``}); //PREPROD
+    await messanger.sendToDiscordWebhook(env.DISCORD_WEBHOOK_TEST_MOD_CHAT,{content:`\`\`\`json\n${JSON.stringify(userData)}\`\`\``}); //PREPROD
     
     // return payload
     payload.status = "ok"
@@ -429,6 +429,7 @@ export async function grantDefaultPerms(userData){
     const setPermQuery = `UPDATE "users" SET "permissions" = '${newPerms} 'WHERE "uuid" = '${userData.uuid}' RETURNING *`
     var response = await database.runQuery("SNAPPS_DEV_DB",setPermQuery)
 
+    console.log(response.data)
     // return payload
     payload.status="ok"
     payload.data=response.data
